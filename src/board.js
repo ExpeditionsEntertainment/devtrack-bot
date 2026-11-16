@@ -7,7 +7,7 @@
 //               place on the Developers tab and the channels picked in its settings. A
 //               forum counts for every post in it, a category for every channel in it.
 //   check-ins   once a day the backend sends the owner a DM (via the webhook, /board-digest)
-//               listing the in-progress tasks nobody has heard about lately.
+//               listing the in-progress tasks nobody has heard about lately, and what's blocked.
 //   ping        "Ask how it's going" on the page: a DM to the dev (/board-ping), or a
 //               message in their place on Discord if their DMs are closed.
 
@@ -70,16 +70,31 @@ function onMessage(message) {
 
 class Refused extends Error { constructor(message) { super(message); this.status = 400; } }
 
-// The owner's daily DM: { date, stale: [{ unit, task, dev, days, url }], updates, url, updatesUrl }
+// The owner's daily DM: { date, stale: [{ unit, task, dev, days, url }], blocked: [{ unit, task, dev, reason, days, url }],
+//                         updates, url, blockedUrl, updatesUrl }
 async function digest(p) {
   if (!client?.isReady()) throw new Error('The bot is not connected to Discord yet');
   const owner = await client.users.fetch(OWNER).catch(() => null);
   if (!owner) throw new Refused(`Can't find the owner account ${OWNER}`);
-  const lines = (p.stale || []).slice(0, 15).map(s => `• [**${s.unit} › ${s.task}**](${s.url}): ${s.dev || 'nobody named'}, ${s.days} day${s.days === 1 ? '' : 's'} with no news`);
-  if ((p.stale || []).length > 15) lines.push(`…and ${p.stale.length - 15} more`);
+  const stale = p.stale || [], blocked = p.blocked || [];
+  const days = n => `${n} day${n === 1 ? '' : 's'}`;
+  const lines = stale.slice(0, 12).map(s => `• [**${s.unit} › ${s.task}**](${s.url}): ${s.dev || 'nobody named'}, ${days(s.days)} with no news`);
+  if (stale.length > 12) lines.push(`…and ${stale.length - 12} more`);
+  // What's blocked, longest first, with why: each one waits on somebody to clear it.
+  if (blocked.length) {
+    if (lines.length) lines.push('');
+    lines.push(`**⛔ ${blocked.length} blocked**${p.blockedUrl ? ` · [see them](${p.blockedUrl})` : ''}`);
+    for (const b of blocked.slice(0, 10)) {
+      const why = b.reason ? `: ${b.reason.replace(/\s+/g, ' ').slice(0, 140)}` : '';
+      lines.push(`• [**${b.unit} › ${b.task}**](${b.url})${b.dev ? ` (${b.dev})` : ''}, ${b.days ? days(b.days) : 'today'}${why}`);
+    }
+    if (blocked.length > 10) lines.push(`…and ${blocked.length - 10} more`);
+  }
+  const title = stale.length ? `🔎 ${stale.length} task${stale.length === 1 ? '' : 's'} to check in on${blocked.length ? `, ${blocked.length} blocked` : ''}`
+    : blocked.length ? `⛔ ${blocked.length} task${blocked.length === 1 ? '' : 's'} blocked` : '📬 Updates waiting';
   const embed = new EmbedBuilder()
-    .setColor(0xff9f0a)
-    .setTitle((p.stale || []).length ? `🔎 ${p.stale.length} task${p.stale.length === 1 ? '' : 's'} to check in on` : '📬 Updates waiting')
+    .setColor(stale.length || !blocked.length ? 0xff9f0a : 0xff375f)
+    .setTitle(title)
     .setDescription([...lines, '', `[Open the Assets board](${p.url})${p.updates ? ` · **${p.updates}** update${p.updates === 1 ? '' : 's'} from Discord to go through: [see them](${p.updatesUrl})` : ''}`].join('\n').slice(0, 4000))
     .setFooter({ text: `DevTrack · ${p.date}` });
   await owner.send({ embeds: [embed] }).catch(err => { throw new Refused(`Could not DM the owner: ${err.message}`); });
