@@ -8,8 +8,10 @@
 //               forum counts for every post in it, a category for every channel in it.
 //   check-ins   once a day the backend sends the owner a DM (via the webhook, /board-digest)
 //               listing the in-progress tasks nobody has heard about lately, and what's blocked.
-//   ping        "Ask how it's going" on the page: a DM to the dev (/board-ping), or a
-//               message in their place on Discord if their DMs are closed.
+//   ping        "Ask how it's going" on the page (/board-ping): a message in the dev's place
+//               on Discord (their channel on the Developers tab), mentioning them. Never a DM.
+//               A forum or category has no messages of its own, so it goes in the open post
+//               about that card if there is one, else the newest post or channel there.
 
 const axios = require('axios');
 const { EmbedBuilder, ChannelType } = require('discord.js');
@@ -100,23 +102,59 @@ async function digest(p) {
   await owner.send({ embeds: [embed] }).catch(err => { throw new Refused(`Could not DM the owner: ${err.message}`); });
 }
 
-// Ask a dev how a task is going: { userId, channelId, text, from }
+// ── asking a dev how it's going, in their place ──
+
+const FORUMS = [ChannelType.GuildForum, ChannelType.GuildMedia];
+const CHANNELS = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
+const words = s => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const latest = c => BigInt(c.lastMessageId || c.id); // the most recent message (or when it was made)
+
+async function openPosts(forum) {
+  const active = await forum.threads.fetchActive().catch(() => null);
+  return [...(active?.threads.values() || [])].filter(t => t.parentId === forum.id && !t.archived);
+}
+
+// How well a post's or channel's name fits: the card's name (or its first word: "Dio" for "Dio
+// OverHeaven") counts most, then the task's.
+function fit(name, card, task) {
+  const n = ` ${words(name)} `;
+  const c = words(card), c1 = c.split(' ')[0], t = words(task).split(' ')[0];
+  const cardHit = c && (n.includes(` ${c} `) || (c1.length >= 3 && n.includes(` ${c1} `)));
+  return (cardHit ? 2 : 0) + (t && n.includes(` ${t}`) ? 1 : 0);
+}
+const best = (list, card, task) => list.map(c => ({ c, f: fit(c.name, card, task), r: latest(c) }))
+  .sort((a, b) => b.f - a.f || (b.r > a.r ? 1 : b.r < a.r ? -1 : 0))[0]?.c || null;
+
+// Where to ask: their place itself when it takes messages (a channel or a post). A forum: its open post
+// about this card, else the one most recently posted in. A category: a post or channel about this card,
+// else its most recently used channel, else its newest open post.
+async function placeToAsk(channelId, card, task) {
+  const place = await client.channels.fetch(channelId).catch(() => null);
+  if (!place) return null;
+  if (place.isThread?.() || CHANNELS.includes(place.type)) return place;
+  if (FORUMS.includes(place.type)) return best(await openPosts(place), card, task);
+  if (place.type === ChannelType.GuildCategory) {
+    const kids = [...place.children.cache.values()];
+    const posts = (await Promise.all(kids.filter(k => FORUMS.includes(k.type)).map(openPosts))).flat();
+    const chans = kids.filter(k => CHANNELS.includes(k.type));
+    const all = best([...posts, ...chans], card, task);
+    if (all && fit(all.name, card, task)) return all;
+    return best(chans, card, task) || best(posts, card, task);
+  }
+  return null;
+}
+
+// Ask a dev how a task is going: { userId, channelId, text, from, card, task }. In their place on
+// Discord, mentioning them; never a DM.
 async function ping(p) {
   if (!client?.isReady()) throw new Error('The bot is not connected to Discord yet');
-  const text = `${p.text}\n-# Asked by ${p.from || 'the team'} via DevTrack`;
-  if (p.userId) {
-    const user = await client.users.fetch(p.userId).catch(() => null);
-    if (user && await user.send(text).then(() => true).catch(() => false)) return 'dm';
-  }
-  // DMs closed (or no account): their place on Discord. A forum has no messages of its own: its newest open post.
-  let place = p.channelId ? await client.channels.fetch(p.channelId).catch(() => null) : null;
-  if (place?.type === ChannelType.GuildForum) {
-    const active = await place.threads.fetchActive().catch(() => null);
-    place = [...(active?.threads.values() || [])].filter(t => t.parentId === place.id).sort((a, b) => b.createdTimestamp - a.createdTimestamp)[0] || null;
-  }
-  if (!place?.isTextBased?.() || !place.send) throw new Refused('Their DMs are closed and they have no channel or open post to ask in');
-  await place.send({ content: p.userId ? `<@${p.userId}> ${text}` : text, allowedMentions: { users: p.userId ? [p.userId] : [] } });
-  return 'channel';
+  if (!p.channelId) throw new Refused('They have no place on the Developers tab to ask in');
+  const place = await placeToAsk(p.channelId, p.card, p.task);
+  if (!place) throw new Refused('The bot can\'t find their channel, or an open post in it, to ask in');
+  const content = `${p.userId ? `<@${p.userId}> ` : ''}${p.text}\n-# Asked by ${p.from || 'the team'} via DevTrack`.slice(0, 2000);
+  await place.send({ content, allowedMentions: { users: p.userId ? [p.userId] : [] } })
+    .catch(err => { throw new Refused(`Could not post in #${place.name}: ${err.message}`); });
+  return { place: place.name, id: place.id };
 }
 
 module.exports = { start, onMessage, digest, ping, isWatched };
