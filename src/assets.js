@@ -8,7 +8,8 @@
 //     Done, and it becomes the author's if it wasn't. The files stay on Discord.
 //   right-click a dev's message → Apps → "Give Assets Task"
 //     pick the task; it goes In Progress with the author on it
-//   /assets      a private message with buttons, each opening a form:
+//   /assets      a private message with buttons, each opening a form (a blocked task is
+//                moved on from the board, which asks what unblocked it):
 //                  Give task     pick the dev and the task
 //                  Remove task   takes the dev off a task, back to Untasked
 //                  Get links     posts the links saved on a task in the channel
@@ -62,7 +63,7 @@ function hold(job) {
   return key;
 }
 
-const STATUS = { untasked: 'Untasked', in_progress: 'In progress', done: 'Done' };
+const STATUS = { untasked: 'Untasked', in_progress: 'In progress', blocked: '⛔ Blocked', done: 'Done' };
 const describe = t => [STATUS[t.status], t.devName].filter(Boolean).join(' · ');
 const option = t => ({ label: `${t.identifier}: ${t.label}`.slice(0, 100), value: t.id, description: describe(t).slice(0, 100) || undefined });
 const link = t => `[${t.identifier}: ${t.label}](<${DASHBOARD}/assets/?item=${encodeURIComponent(t.identifier)}>)`;
