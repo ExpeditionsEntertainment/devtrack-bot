@@ -19,6 +19,7 @@ const devTags = require('./dev-tags');
 const robloxConvert = require('./roblox-convert');
 const assets = require('./assets');
 const devStatus = require('./dev-status');
+const progress = require('./progress');
 const modelViewer = require('./model-viewer');
 const board = require('./board');
 const forumSync = require('./forum-sync');
@@ -130,6 +131,7 @@ client.once(Events.ClientReady, async (c) => {
   await reportPause.syncPauseState();
   personal.start(client); // no-op unless PERSONAL_OWNER_DISCORD_ID is set
   devStatus.start(client); // 🟢/🟡 on devs' places from the Assets board's In progress; needs ASSET_STATUS_POSTS=true
+  progress.start(client); // the Assets board as cards in a channel; needs BOARD_PROGRESS_CHANNEL_ID
   tickets.start(client, threadReportMap); // the remaining Ticket Tool tickets; off with TICKETS_ENABLED=false
   // Dev-name tags (Ricky, Bryan, ...) on every post in the report forums.
   devTags.syncAll(client, Object.keys(WATCHED_CHANNELS).filter(id => WATCHED_CHANNELS[id] !== 'import'));
