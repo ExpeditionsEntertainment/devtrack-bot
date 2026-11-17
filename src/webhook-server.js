@@ -32,7 +32,7 @@ function start() {
       return;
     }
 
-    if (req.method !== 'POST' || !['/action', '/alert', '/import-status', '/patch-fix', '/ping-testers', '/reports-pause-state', '/qa-check', '/qa-check-update', '/model-rbxm', '/dots-refresh', '/linear-refresh', '/board-digest', '/board-ping'].includes(req.url)) {
+    if (req.method !== 'POST' || !['/action', '/alert', '/import-status', '/patch-fix', '/ping-testers', '/reports-pause-state', '/qa-check', '/qa-check-update', '/model-rbxm', '/dots-refresh', '/linear-refresh', '/board-digest', '/board-ping', '/board-progress'].includes(req.url)) {
       res.writeHead(404);
       res.end();
       return;
@@ -76,6 +76,15 @@ function start() {
       // still sent by a backend that hasn't been redeployed yet.)
       if (req.url === '/dots-refresh' || req.url === '/linear-refresh') {
         require('./dev-status').refreshSoon(1000);
+        require('./progress').refreshSoon(3000); // a dev's name may have changed on the cards
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+        return;
+      }
+
+      // The Assets board changed: redraw the progress channel's cards in a few seconds.
+      if (req.url === '/board-progress') {
+        require('./progress').refreshSoon(3000);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
         return;
