@@ -5,8 +5,6 @@
 //                      card: its progress bar, every task in the template's order (Animations,
 //                      Mesh, Texture...) with its status and who's on it, why a blocked one is
 //                      blocked, and the card's image
-//   at the bottom      (where Discord opens a channel) who's working on what, what's blocked,
-//                      and who's free for a task
 //
 // The bot keeps its own messages in the channel in that order and edits them in place: a change
 // edits only the message it touches, and a new card moves the ones after it down by editing them,
@@ -30,7 +28,7 @@ const MARK = 'DevTrack Assets'; // in every footer: how the bot knows its own ca
 const bot = () => ({ headers: { 'x-bot-secret': process.env.BOT_SECRET }, timeout: 20000 });
 
 // The Assets page's colours.
-const COLOR = { done: 0x30d158, in_progress: 0xff9f0a, blocked: 0xff375f, untasked: 0x8e8e93, update: 0x5e5ce6, free: 0xffd60a };
+const COLOR = { done: 0x30d158, in_progress: 0xff9f0a, blocked: 0xff375f, untasked: 0x8e8e93, update: 0x5e5ce6 };
 const DOT = { done: '✅', in_progress: '🟠', blocked: '⛔', untasked: '⚪' };
 const CELL = { done: '🟩', in_progress: '🟧', blocked: '🟥', untasked: '⬛' };
 const ORDER = ['done', 'in_progress', 'blocked', 'untasked'];
@@ -130,35 +128,6 @@ function updateEmbed(u) {
   return e;
 }
 
-// The bottom of the channel: who's working on what, what's blocked, who's free.
-function nowEmbeds(p) {
-  const working = p.working || [], blocked = p.blocked || [], free = p.free || [];
-  const busy = working.reduce((s, d) => s + d.tasks.length, 0);
-  const out = [new EmbedBuilder()
-    .setColor(COLOR.in_progress)
-    .setTitle(`🛠️  In progress  ·  ${busy}`)
-    .setDescription(working.length ? fit(working.map(d => [
-      `**${md(d.name)}**  ·  ${plural(d.tasks.length, 'task')}`,
-      ...d.tasks.slice(0, 6).map(t => ` ${DOT.in_progress} ${md(t.card)} › ${md(t.task)}${t.startedAt ? ` · started ${ts(t.startedAt)}` : ''}`),
-      ...(d.tasks.length > 6 ? [` *…and ${d.tasks.length - 6} more*`] : []),
-    ].join('\n')), 3000, '\n\n') : '*Nothing is in progress right now.*')];
-  if (blocked.length) {
-    out.push(new EmbedBuilder()
-      .setColor(COLOR.blocked)
-      .setTitle(`⛔  Blocked  ·  ${blocked.length}`)
-      .setDescription(fit(blocked.map(b => `**${md(b.card)} › ${md(b.task)}**${b.dev ? ` · ${md(b.dev)}` : ''}${b.since ? ` · since ${ts(b.since)}` : ''}\n ↳ *${md(clip(b.reason || 'No reason given', 200))}*`), 2000, '\n\n')));
-  }
-  if (free.length) {
-    out.push(new EmbedBuilder()
-      .setColor(COLOR.free)
-      .setTitle(`🟡  Free for a task  ·  ${free.length}`)
-      .setDescription(fit(free.map(md), 600, '  ·  ')));
-  }
-  out.at(-1).setFooter({ text: `Updates by itself · ${MARK}` });
-  if (p.changedAt) out.at(-1).setTimestamp(new Date(p.changedAt));
-  return out;
-}
-
 // Every message the channel should show, top to bottom, each a list of embeds.
 function draw(p) {
   const msgs = [];
@@ -166,7 +135,6 @@ function draw(p) {
     msgs.push([updateEmbed(u)]);
     for (const c of u.cards) msgs.push([cardEmbed(c, u.name)]);
   }
-  msgs.push(nowEmbeds(p));
   return msgs.map(list => list.map(e => e.toJSON()));
 }
 
