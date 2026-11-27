@@ -15,7 +15,7 @@ const { devTagsFor } = require('./dev-tags');
 
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 const BOT_SECRET = process.env.BOT_SECRET;
-const DASHBOARD = process.env.DASHBOARD_URL || 'https://lambent-lily-7bf643.netlify.app';
+const DASHBOARD = process.env.DASHBOARD_URL || 'https://aedevtrack.netlify.app';
 
 function buildAttachmentList(message) {
   if (!message?.attachments?.size) return [];
