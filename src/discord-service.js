@@ -3,7 +3,7 @@
 
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder, GatewayIntentBits } = require('discord.js');
 
-const DASHBOARD_URL = process.env.DASHBOARD_URL || 'https://lambent-lily-7bf643.netlify.app';
+const DASHBOARD_URL = process.env.DASHBOARD_URL || 'https://aedevtrack.netlify.app';
 const REVIEWER_ALERT_CHANNEL_ID = process.env.REVIEWER_ALERT_CHANNEL_ID || '1500338092077482107';
 const REVIEWER_ROLE_ID = process.env.REVIEWER_ROLE_ID || '1500338695906267388';
 const QA_ALERT_CHANNEL_ID = process.env.QA_ALERT_CHANNEL_ID || '1500338135077490720';

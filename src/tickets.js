@@ -21,7 +21,7 @@ const { logMessage, getAttachments } = require('./message-logger');
 
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 const BOT_SECRET = process.env.BOT_SECRET;
-const DASHBOARD_URL = process.env.DASHBOARD_URL || 'https://lambent-lily-7bf643.netlify.app';
+const DASHBOARD_URL = process.env.DASHBOARD_URL || 'https://aedevtrack.netlify.app';
 
 const ENABLED = process.env.TICKETS_ENABLED !== 'false';
 const CLOSE_DELAY_MS = process.env.TICKET_CLOSE_DELAY_MS !== undefined ? Number(process.env.TICKET_CLOSE_DELAY_MS) : 5 * 60000;

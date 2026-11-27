@@ -17,7 +17,7 @@ const {
 const ENABLED = String(process.env.MODEL_VIEWER_ENABLED || 'true').toLowerCase() !== 'false';
 const COMMAND = 'Open in Model Viewer';
 const API_URL = process.env.API_URL || 'http://localhost:3001';
-const DASHBOARD = (process.env.DASHBOARD_URL || 'https://lambent-lily-7bf643.netlify.app').replace(/\/+$/, '');
+const DASHBOARD = (process.env.DASHBOARD_URL || 'https://aedevtrack.netlify.app').replace(/\/+$/, '');
 const OWNER = String(process.env.PERSONAL_OWNER_DISCORD_ID || process.env.CONVERT_OWNER_ID || '618957089833877518').trim();
 const ANYWHERE = { integration_types: [0, 1], contexts: [0, 1, 2] };
 const MAX_FILES = 5;

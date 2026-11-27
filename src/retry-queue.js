@@ -231,7 +231,7 @@ async function handleRetryButton(interaction, deps) {
   const reportId = await attemptSubmit(entry, deps);
 
   if (reportId) {
-    const DASHBOARD = process.env.DASHBOARD_URL || 'https://lambent-lily-7bf643.netlify.app';
+    const DASHBOARD = process.env.DASHBOARD_URL || 'https://aedevtrack.netlify.app';
     await interaction.editReply({
       content: `✅ **Report submitted successfully!**\n${DASHBOARD}#report/${reportId}`,
     }).catch(() => {});
